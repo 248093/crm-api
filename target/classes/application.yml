@@ -1,0 +1,63 @@
+spring:
+  application:
+    name: crm-api
+  profiles:
+    active: dev
+  mvc:
+    path-match:
+      matching-strategy: ant_path_matcher
+
+mybatis-plus:
+  mapper-locations: classpath:/mapper/*Mapper.xml
+  type-aliases-package: com.crm.*.entity
+  configuration:
+    map-underscore-to-camel-case: true
+    cache-enabled: false
+    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
+  global-config:
+    db-config:
+      logic-delete-field: true
+      logic-delete-value: 1
+      logic-not-delete-value: 0
+
+server:
+  port: 8081
+  servlet:
+    context-path: /crm-api
+
+logging:
+  config: classpath:log/logback-spring.xml
+
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html
+    tags-sorter: alpha
+    operations-sorter: alpha
+  api-docs:
+    path: /v3/api-docs
+  group-configs:
+    - group: 'default'
+      paths-to-match: '/**'
+      packages-to-scan: com.crm.controller
+
+knife4j:
+  enable: true
+  setting:
+    language: zh_cn
+  basic:
+    enable: true
+    username: admin
+    password: 123456
+
+auth:
+  ignore_urls:
+    - /sys/auth/**
+    - /actuator/**
+    - /v3/api-docs/**
+    - /webjars/**
+    - /swagger/**
+    - /swagger-resources/**
+    - /swagger-ui.html
+    - /swagger-ui/**
+    - /doc.html
+    - /
