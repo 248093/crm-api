@@ -31,6 +31,8 @@ public class SysManagerVO implements Serializable {
     @NotBlank(message = "昵称不能为空")
     private String nickname;
 
+    @Schema(description = "部门id")
+    private Integer departId;
 
     @Schema(description = "状态 0-禁用，1-启用")
     private Integer status;
