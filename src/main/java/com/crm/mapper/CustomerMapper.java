@@ -1,16 +1,11 @@
+// 修改 CustomerMapper.java
 package com.crm.mapper;
 
-import com.crm.entity.Customer;
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
+import com.crm.entity.Customer;
+import com.github.yulichang.base.MPJBaseMapper;
+import org.apache.ibatis.annotations.Mapper;
 
-/**
- * <p>
- *  Mapper 接口
- * </p>
- *
- * @author vact
- * @since 2025-10-12
- */
-public interface CustomerMapper extends BaseMapper<Customer> {
-
+@Mapper
+public interface CustomerMapper extends BaseMapper<Customer>, MPJBaseMapper<Customer> {
 }

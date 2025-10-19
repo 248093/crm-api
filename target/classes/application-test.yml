@@ -9,4 +9,4 @@ spring:
     redis:
       host: 127.0.0.1
       port: 6379
-      password: 123456   # 如果没有密码，可以不写或写成空字符串
+      password:  # 如果没有密码，可以不写或写成空字符串
