@@ -14,10 +14,7 @@ import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import lombok.AllArgsConstructor;
 import org.springframework.stereotype.Service;
 
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-import java.util.Objects;
+import java.util.*;
 
 /**
  * <p>
@@ -167,5 +164,33 @@ public class DepartmentServiceImpl extends ServiceImpl<DepartmentMapper, Departm
         // 删除该部门以及子部门
         List<Department> departments = baseMapper.selectList(new LambdaQueryWrapper<Department>().like(Department::getParentIds, query.getId()).or().eq(Department::getId, query.getId()));
         removeBatchByIds(departments);
+    }
+    @Override
+    public Set<Integer> getDeptAndSubDeptIds(Integer deptId) {
+        Set<Integer> deptIds = new HashSet<>();
+        deptIds.add(deptId);
+
+        // 查询所有部门
+        List<Department> allDepts = this.list(new LambdaQueryWrapper<Department>()
+                .eq(Department::getDeleteFlag, 0));
+
+        // 构建父子关系映射
+        Map<Integer, List<Department>> parentChildMap = new HashMap<>();
+        for (Department dept : allDepts) {
+            parentChildMap.computeIfAbsent(dept.getParentId(), k -> new ArrayList<>()).add(dept);
+        }
+
+        // 递归查找子部门
+        findChildDepts(deptId, parentChildMap, deptIds);
+
+        return deptIds;
+    }
+
+    private void findChildDepts(Integer parentId, Map<Integer, List<Department>> parentChildMap, Set<Integer> deptIds) {
+        List<Department> children = parentChildMap.getOrDefault(parentId, Collections.emptyList());
+        for (Department child : children) {
+            deptIds.add(child.getId());
+            findChildDepts(child.getId(), parentChildMap, deptIds);
+        }
     }
 }

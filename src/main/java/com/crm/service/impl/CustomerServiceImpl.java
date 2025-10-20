@@ -9,6 +9,8 @@ import com.crm.entity.Customer;
 import com.crm.entity.SysManager;
 import com.crm.mapper.CustomerMapper;
 import com.crm.query.CustomerQuery;
+import com.crm.query.IdQuery;
+import com.crm.security.user.ManagerDetail;
 import com.crm.security.user.SecurityUser;
 import com.crm.service.CustomerService;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
@@ -19,9 +21,11 @@ import io.micrometer.common.util.StringUtils;
 import jakarta.annotation.Resource;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.Set;
 
 /**
  * <p>
@@ -34,6 +38,31 @@ import java.util.List;
 @Slf4j
 @Service
 public class CustomerServiceImpl extends ServiceImpl<CustomerMapper, Customer> implements CustomerService {
+    @Override
+    public void removeCustomer(List<Integer> ids) {
+        removeByIds(ids);
+    }
+    @Override
+    public void customerToPublicPool(IdQuery idQuery) {
+        Customer customer = baseMapper.selectById(idQuery.getId());
+        if (customer == null) {
+            throw new ServerException("客户不存在，无法转入公海");
+        }
+        customer.setIsPublic(1);
+        customer.setOwnerId(null);
+        baseMapper.updateById(customer);
+    }
+    @Override
+    public void publicPoolToPrivate(IdQuery idQuery) {
+        Customer customer = baseMapper.selectById(idQuery.getId());
+        if (customer == null) {
+            throw new ServerException("客户不存在，无法转入公海");
+        }
+        customer.setIsPublic(0);
+        Integer ownerId = SecurityUser.getManagerId();
+        customer.setOwnerId(ownerId);
+        baseMapper.updateById(customer);
+    }
     @Override
     public PageResult<CustomerVO> getPage(CustomerQuery query) {
         Page<CustomerVO> page = new Page<>(query.getPage(), query.getLimit());
@@ -73,13 +102,27 @@ public class CustomerServiceImpl extends ServiceImpl<CustomerMapper, Customer> i
             baseMapper.updateById(convert);
         }
     }
-    private MPJLambdaWrapper<Customer> selection(CustomerQuery  query){
+    private MPJLambdaWrapper<Customer> selection(CustomerQuery query) {
         MPJLambdaWrapper<Customer> wrapper = new MPJLambdaWrapper<>();
         wrapper.selectAll(Customer.class)
                 .selectAs("o", SysManager::getAccount, CustomerVO::getOwnerName)
                 .selectAs("c", SysManager::getAccount, CustomerVO::getCreaterName)
                 .leftJoin(SysManager.class, "o", SysManager::getId, Customer::getOwnerId)
                 .leftJoin(SysManager.class, "c", SysManager::getId, Customer::getCreaterId);
+        // 修复部门权限过滤逻辑
+        Object principal = SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+        if (principal instanceof ManagerDetail) {
+            ManagerDetail userDetails = (ManagerDetail) principal;
+            // 假设 ManagerDetail 中有 deptIds 属性
+            // 如果是其他方式存储部门信息，请相应调整
+            Set<Integer> deptIds = userDetails.getDeptIds(); // 正确获取部门ID集合
+            if (deptIds != null && !deptIds.isEmpty()) {
+                log.info("用户部门IDs：{}", deptIds);
+                wrapper.in(SysManager::getDepartId, deptIds); // 使用正确的字段名
+            }
+        }
+
+        // 其他查询条件保持不变
         if (StringUtils.isNotBlank(query.getName())) {
             wrapper.like(Customer::getName, query.getName());
         }
@@ -101,4 +144,5 @@ public class CustomerServiceImpl extends ServiceImpl<CustomerMapper, Customer> i
         wrapper.orderByDesc(Customer::getCreateTime);
         return wrapper;
     }
+
 }

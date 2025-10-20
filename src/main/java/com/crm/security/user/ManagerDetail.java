@@ -20,6 +20,7 @@ public class ManagerDetail implements UserDetails {
     private String realName;
     private Integer status;
     private String username;
+    private Set<Integer> deptIds;
 
     /**
      * 帐户是否过期

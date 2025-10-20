@@ -5,17 +5,22 @@ import com.crm.common.result.Result;
 import com.crm.entity.Department;
 import com.crm.query.IdQuery;
 import com.crm.query.DepartmentQuery;
+import com.crm.security.user.ManagerDetail;
 import com.crm.service.DepartmentService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.AllArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 /**
  * <p>
@@ -30,6 +35,7 @@ import java.util.List;
 @RestController
 @RequestMapping("department")
 @AllArgsConstructor
+@Slf4j
 public class DepartmentController {
     private final DepartmentService departmentService;
 
@@ -54,5 +60,31 @@ public class DepartmentController {
     public Result removeDepartment(@RequestBody @Validated IdQuery query) {
         departmentService.removeDepartment(query);
         return Result.ok();
+    }
+    @PostMapping("deptAndSub")
+    @Operation(summary = "获取当前用户所属部门及子部门")
+    public Result<Set<Integer>> getMyDeptAndSubDept() {
+        Object principal = SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+        ManagerDetail userDetails;
+        if (principal instanceof ManagerDetail) {
+            userDetails = (ManagerDetail) principal;
+        } else if (principal instanceof String) {
+            // 如果 principal 是 String 类型，可能需要重新加载用户信息
+            // 这里可以根据实际情况进行处理，比如从 Redis 重新加载
+            // 暂时返回空集合
+            log.info("用户信息未找到");
+            return Result.ok(new HashSet<>());
+        } else {
+            // 其他情况，返回空集合
+            log.info("用户信息未找到");
+            return Result.ok(new HashSet<>());
+        }
+
+        // 使用正确的 getter 方法
+        Set<Integer> deptIds = userDetails.getDeptIds();
+        if (deptIds != null) {
+            return Result.ok(deptIds);
+        }
+        return Result.ok(new HashSet<>());
     }
 }

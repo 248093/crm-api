@@ -7,6 +7,7 @@ import com.crm.query.IdQuery;
 import com.crm.query.DepartmentQuery;
 
 import java.util.List;
+import java.util.Set;
 
 /**
  * <p>
@@ -39,4 +40,10 @@ public interface DepartmentService extends IService<Department> {
      * @param query
      */
     void removeDepartment(IdQuery query);
+    /**
+     * 获取指定部门及其所有子部门的ID集合
+     * @param deptId 部门ID
+     * @return 部门ID集合
+     */
+    Set<Integer> getDeptAndSubDeptIds(Integer deptId);
 }
