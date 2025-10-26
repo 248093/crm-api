@@ -1,32 +1,22 @@
 package com.crm.entity;
 
-import com.baomidou.mybatisplus.annotation.FieldFill;
-import com.baomidou.mybatisplus.annotation.IdType;
-import com.baomidou.mybatisplus.annotation.TableField;
-import com.baomidou.mybatisplus.annotation.TableId;
-import com.baomidou.mybatisplus.annotation.TableLogic;
-import com.baomidou.mybatisplus.annotation.TableName;
-import java.math.BigDecimal;
-import java.time.LocalDateTime;
+import com.baomidou.mybatisplus.annotation.*;
+import com.crm.utils.DateUtils;
+import com.fasterxml.jackson.annotation.JsonFormat;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import io.swagger.annotations.ApiModel;
 import io.swagger.annotations.ApiModelProperty;
 import lombok.Getter;
 import lombok.Setter;
 
-/**
- * <p>
- * 
- * </p>
- *
- * @author vact
- * @since 2025-10-12
- */
+import java.math.BigDecimal;
+import java.time.LocalDateTime;
+
 @Getter
 @Setter
 @TableName("t_product")
 @ApiModel(value = "Product对象", description = "")
 public class Product {
-
     @ApiModelProperty("主键")
     @TableId(value = "id", type = IdType.AUTO)
     private Integer id;
@@ -47,9 +37,9 @@ public class Product {
     @TableField("stock")
     private Integer stock;
 
-    @ApiModelProperty("商品状态 0-初始化，1-上架，2-下架")
+    @ApiModelProperty("商品状态 0-初始化,1-上架,2-下架")
     @TableField("status")
-    private Byte status;
+    private Integer status;
 
     @ApiModelProperty("封面图")
     @TableField("cover_image")
@@ -59,16 +49,29 @@ public class Product {
     @TableField("description")
     private String description;
 
-    @ApiModelProperty("逻辑删除 0-未删除，1-已删除")
+    @ApiModelProperty("逻辑删除 0-未删除,1-已删除")
     @TableField(value = "delete_flag", fill = FieldFill.INSERT)
     @TableLogic
-    private Byte deleteFlag;
+    @JsonIgnore
+    private Integer deleteFlag;
 
     @ApiModelProperty("创建时间")
     @TableField(value = "create_time", fill = FieldFill.INSERT)
+    @JsonFormat(pattern = DateUtils.DATE_TIME_PATTERN)
     private LocalDateTime createTime;
 
     @ApiModelProperty("更新时间")
     @TableField(value = "update_time", fill = FieldFill.INSERT_UPDATE)
+    @JsonFormat(pattern = DateUtils.DATE_TIME_PATTERN)
     private LocalDateTime updateTime;
+
+    @ApiModelProperty("上架时间")
+    @TableField(value = "online_time")
+    @JsonFormat(pattern = DateUtils.DATE_TIME_PATTERN)
+    private LocalDateTime onlineTime;
+
+    @ApiModelProperty("下架时间")
+    @TableField(value = "offline_time")
+    @JsonFormat(pattern = DateUtils.DATE_TIME_PATTERN)
+    private LocalDateTime offlineTime;
 }
