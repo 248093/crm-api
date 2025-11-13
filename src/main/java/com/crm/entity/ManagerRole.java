@@ -17,7 +17,7 @@ import lombok.Setter;
  * 用户角色关系
  * </p>
  *
- * @author vact
+ * @author crm
  * @since 2025-10-12
  */
 @Getter

@@ -5,7 +5,6 @@ import lombok.Data;
 
 @Data
 public class IdQuery {
-    
     @NotNull(message = "id不能为空")
     private Integer id;
 }

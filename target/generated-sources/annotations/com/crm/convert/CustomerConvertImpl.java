@@ -1,14 +1,13 @@
 package com.crm.convert;
 
 import com.crm.entity.Customer;
+import com.crm.entity.Lead;
 import com.crm.vo.CustomerVO;
-import java.util.ArrayList;
-import java.util.List;
 import javax.annotation.processing.Generated;
 
 @Generated(
     value = "org.mapstruct.ap.MappingProcessor",
-    date = "2025-10-26T20:23:42+0800",
+    date = "2025-11-13T14:17:52+0800",
     comments = "version: 1.5.5.Final, compiler: javac, environment: Java 21.0.7 (Oracle Corporation)"
 )
 public class CustomerConvertImpl implements CustomerConvert {
@@ -32,10 +31,16 @@ public class CustomerConvertImpl implements CustomerConvert {
         customer.setNextFollowStatus( customerVO.getNextFollowStatus() );
         customer.setRemark( customerVO.getRemark() );
         customer.setCreaterId( customerVO.getCreaterId() );
-        customer.setIsPublic( customerVO.getIsPublic() );
+        if ( customerVO.getIsPublic() != null ) {
+            customer.setIsPublic( customerVO.getIsPublic().byteValue() );
+        }
         customer.setOwnerId( customerVO.getOwnerId() );
-        customer.setIsKeyDecisionMaker( customerVO.getIsKeyDecisionMaker() );
-        customer.setGender( customerVO.getGender() );
+        if ( customerVO.getIsKeyDecisionMaker() != null ) {
+            customer.setIsKeyDecisionMaker( customerVO.getIsKeyDecisionMaker().byteValue() );
+        }
+        if ( customerVO.getGender() != null ) {
+            customer.setGender( customerVO.getGender().byteValue() );
+        }
         customer.setDealCount( customerVO.getDealCount() );
         customer.setCreateTime( customerVO.getCreateTime() );
 
@@ -43,45 +48,30 @@ public class CustomerConvertImpl implements CustomerConvert {
     }
 
     @Override
-    public CustomerVO convert(Customer customer) {
-        if ( customer == null ) {
+    public Customer leadConvert(Lead lead) {
+        if ( lead == null ) {
             return null;
         }
 
-        CustomerVO customerVO = new CustomerVO();
+        Customer customer = new Customer();
 
-        customerVO.setId( customer.getId() );
-        customerVO.setName( customer.getName() );
-        customerVO.setPhone( customer.getPhone() );
-        customerVO.setEmail( customer.getEmail() );
-        customerVO.setLevel( customer.getLevel() );
-        customerVO.setSource( customer.getSource() );
-        customerVO.setAddress( customer.getAddress() );
-        customerVO.setFollowStatus( customer.getFollowStatus() );
-        customerVO.setNextFollowStatus( customer.getNextFollowStatus() );
-        customerVO.setRemark( customer.getRemark() );
-        customerVO.setCreaterId( customer.getCreaterId() );
-        customerVO.setIsPublic( customer.getIsPublic() );
-        customerVO.setOwnerId( customer.getOwnerId() );
-        customerVO.setIsKeyDecisionMaker( customer.getIsKeyDecisionMaker() );
-        customerVO.setGender( customer.getGender() );
-        customerVO.setDealCount( customer.getDealCount() );
-        customerVO.setCreateTime( customer.getCreateTime() );
-
-        return customerVO;
-    }
-
-    @Override
-    public List<Customer> convert(List<CustomerVO> customerVOs) {
-        if ( customerVOs == null ) {
-            return null;
+        customer.setId( lead.getId() );
+        customer.setName( lead.getName() );
+        customer.setPhone( lead.getPhone() );
+        customer.setEmail( lead.getEmail() );
+        customer.setLevel( lead.getLevel() );
+        customer.setSource( lead.getSource() );
+        customer.setAddress( lead.getAddress() );
+        customer.setFollowStatus( lead.getFollowStatus() );
+        customer.setNextFollowStatus( lead.getNextFollowStatus() );
+        customer.setRemark( lead.getRemark() );
+        customer.setOwnerId( lead.getOwnerId() );
+        if ( lead.getDeleteFlag() != null ) {
+            customer.setDeleteFlag( lead.getDeleteFlag().byteValue() );
         }
+        customer.setCreateTime( lead.getCreateTime() );
+        customer.setUpdateTime( lead.getUpdateTime() );
 
-        List<Customer> list = new ArrayList<Customer>( customerVOs.size() );
-        for ( CustomerVO customerVO : customerVOs ) {
-            list.add( convert( customerVO ) );
-        }
-
-        return list;
+        return customer;
     }
 }

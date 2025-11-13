@@ -9,23 +9,30 @@ import com.crm.entity.Customer;
 import com.crm.entity.SysManager;
 import com.crm.mapper.CustomerMapper;
 import com.crm.query.CustomerQuery;
+import com.crm.query.CustomerTrendQuery;
 import com.crm.query.IdQuery;
-import com.crm.security.user.ManagerDetail;
 import com.crm.security.user.SecurityUser;
 import com.crm.service.CustomerService;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.crm.utils.DateUtils;
 import com.crm.utils.ExcelUtils;
+import com.crm.vo.CustomerTrendVO;
 import com.crm.vo.CustomerVO;
 import com.github.yulichang.wrapper.MPJLambdaWrapper;
 import io.micrometer.common.util.StringUtils;
-import jakarta.annotation.Resource;
 import jakarta.servlet.http.HttpServletResponse;
-import lombok.extern.slf4j.Slf4j;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 
+import java.net.http.HttpResponse;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.time.temporal.ChronoUnit;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
-import java.util.Set;
+import java.util.Map;
+
+import static com.crm.utils.DateUtils.*;
 
 /**
  * <p>
@@ -35,114 +42,171 @@ import java.util.Set;
  * @author crm
  * @since 2025-10-12
  */
-@Slf4j
 @Service
 public class CustomerServiceImpl extends ServiceImpl<CustomerMapper, Customer> implements CustomerService {
-    @Override
-    public void removeCustomer(List<Integer> ids) {
-        removeByIds(ids);
-    }
-    @Override
-    public void customerToPublicPool(IdQuery idQuery) {
-        Customer customer = baseMapper.selectById(idQuery.getId());
-        if (customer == null) {
-            throw new ServerException("客户不存在，无法转入公海");
-        }
-        customer.setIsPublic(1);
-        customer.setOwnerId(null);
-        baseMapper.updateById(customer);
-    }
-    @Override
-    public void publicPoolToPrivate(IdQuery idQuery) {
-        Customer customer = baseMapper.selectById(idQuery.getId());
-        if (customer == null) {
-            throw new ServerException("客户不存在，无法转入公海");
-        }
-        customer.setIsPublic(0);
-        Integer ownerId = SecurityUser.getManagerId();
-        customer.setOwnerId(ownerId);
-        baseMapper.updateById(customer);
-    }
+
     @Override
     public PageResult<CustomerVO> getPage(CustomerQuery query) {
+
         Page<CustomerVO> page = new Page<>(query.getPage(), query.getLimit());
         MPJLambdaWrapper<Customer> wrapper = selection(query);
         Page<CustomerVO> result = baseMapper.selectJoinPage(page, CustomerVO.class, wrapper);
+
         return new PageResult<>(result.getRecords(), result.getTotal());
     }
+
     @Override
-    public void exportCustomer(CustomerQuery query, HttpServletResponse httpResponse){
+    public void exportCustomer(CustomerQuery query, HttpServletResponse httpResponse) {
         MPJLambdaWrapper<Customer> wrapper = selection(query);
         List<Customer> customerList = baseMapper.selectJoinList(wrapper);
-        ExcelUtils.writeExcel(httpResponse, customerList,"客户信息","客户信息", CustomerVO.class);
+        ExcelUtils.writeExcel(httpResponse, customerList, "客户信息", "客户信息", CustomerVO.class);
     }
 
     @Override
     public void saveOrUpdate(CustomerVO customerVO) {
         LambdaQueryWrapper<Customer> wrapper = new LambdaQueryWrapper<Customer>().eq(Customer::getPhone, customerVO.getPhone());
-        log.info("查询客户信息：{}",customerVO.getId());
-        if(customerVO.getId() == null){
+        if (customerVO.getId()==null){
             Customer customer = baseMapper.selectOne(wrapper);
-            if(customer != null){
-                throw new ServerException("该手机号已经存在，请勿重复添加");
+            if (customer != null){
+                throw new ServerException("手机号客户已存在，请勿重复添加");
             }
-            Customer convert=CustomerConvert.INSTANCE.convert(customerVO);
-            log.info("保存客户信息：{}",convert);
+            Customer convert = CustomerConvert.INSTANCE.convert(customerVO);
             Integer managerId = SecurityUser.getManagerId();
             convert.setCreaterId(managerId);
             convert.setOwnerId(managerId);
+            convert.setFollowStatus(0);
             baseMapper.insert(convert);
         }else {
-            wrapper.ne(Customer::getId,customerVO.getId());
+            wrapper.ne(Customer::getId, customerVO.getId());
             Customer customer = baseMapper.selectOne(wrapper);
-            if(customer!=null){
-                throw new ServerException("该手机号已经存在，请勿重复添加");
+            if (customer != null){
+                throw new ServerException("手机号客户已存在，请勿重复添加");
             }
-            Customer convert=CustomerConvert.INSTANCE.convert(customerVO);
-            baseMapper.updateById(convert);
+            Customer convert = CustomerConvert.INSTANCE.convert(customerVO);
+            baseMapper.updateById( convert);
         }
     }
-    private MPJLambdaWrapper<Customer> selection(CustomerQuery query) {
+
+    @Override
+    public void removeCustomer(List<Integer> ids) {
+        removeByIds(ids);
+    }
+
+    @Override
+    public void customerToPublicPool(IdQuery idQuery) {
+        Customer customer = baseMapper.selectById(idQuery.getId());
+        if (customer == null){
+            throw new ServerException("客户不存在，无法转入公海");
+        }
+        customer.setIsPublic((byte) 1);
+        customer.setOwnerId(null);
+        baseMapper.updateById(customer);
+    }
+
+    @Override
+    public void publicPoolToPrivate(IdQuery idQuery) {
+        Customer customer = baseMapper.selectById(idQuery.getId());
+        if (customer == null){
+            throw new ServerException("客户不存在，无法转入公海");
+        }
+        customer.setIsPublic((byte) 0);
+        Integer ownerId = SecurityUser.getManagerId();
+        customer.setOwnerId(ownerId);
+        baseMapper.updateById(customer);
+    }
+
+    @Override
+    public Map<String, List> getCustomerTrendData(CustomerTrendQuery query) {
+        List<String> timeList = new ArrayList<>();
+
+        List<Integer> countList = new ArrayList<>();
+
+        List<CustomerTrendVO> tradeStatistics;
+
+        if ("day".equals(query.getTransactionType())){
+            LocalDateTime now = LocalDateTime.now();
+            LocalDateTime localDateTime = now.truncatedTo(ChronoUnit.SECONDS);
+            LocalDateTime startTime = now.withHour(0).withSecond(0).truncatedTo(ChronoUnit.SECONDS);
+            DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+            List<String> timeRange = new ArrayList<>();
+            timeRange.add(formatter.format(startTime));
+            timeRange.add(formatter.format(localDateTime));
+            timeList = getHourData(timeList);
+            query.setTimeRange(timeRange);
+            tradeStatistics = baseMapper.getTradeStatistics(query);
+        } else if ("mothrange".equals(query.getTransactionType())) {
+            query.setTimeFormat("%Y-%m");
+            timeList = getMonthInRange(query.getTimeRange().get(0), query.getTimeRange().get(1));
+            tradeStatistics = baseMapper.getTradeStatisticsByDay(query);
+        } else if ("week".equals(query.getTransactionType())) {
+            timeList = getWeekInRange(query.getTimeRange().get(0), query.getTimeRange().get(1));
+            tradeStatistics = baseMapper.getTradeStatisticsByWeek(query);
+        }else {
+            query.setTimeFormat("%Y-%m-%d");
+            timeList = DateUtils.getDatesInRange(query.getTimeRange().get(0), query.getTimeRange().get(1));
+            tradeStatistics = baseMapper.getTradeStatisticsByDay(query);
+        }
+        List<CustomerTrendVO> finalTradeStatistics = tradeStatistics;
+        timeList.forEach(item -> {
+            CustomerTrendVO statisticsVO = finalTradeStatistics.stream().filter(vo -> {
+                if ("day".equals(query.getTransactionType())){
+                    return item.substring(0,2).equals(vo.getTradeTime().substring(0,2));
+                }else {
+                    return item.equals(vo.getTradeTime());
+                }
+            })
+                    .findFirst()
+                    .orElse(null);
+
+            if (statisticsVO != null){
+                countList.add(statisticsVO.getTradeCount());
+            }else {
+                countList.add(0);
+            }
+        });
+        Map<String, List> result = new HashMap<>();
+        result.put("timeList", timeList);
+        result.put("countList", countList);
+        return result;
+    }
+
+    private MPJLambdaWrapper<Customer> selection(CustomerQuery  query){
+        Page<CustomerVO> page = new Page<>(query.getPage(), query.getLimit());
         MPJLambdaWrapper<Customer> wrapper = new MPJLambdaWrapper<>();
         wrapper.selectAll(Customer.class)
                 .selectAs("o", SysManager::getAccount, CustomerVO::getOwnerName)
                 .selectAs("c", SysManager::getAccount, CustomerVO::getCreaterName)
-                .leftJoin(SysManager.class, "o", SysManager::getId, Customer::getOwnerId)
-                .leftJoin(SysManager.class, "c", SysManager::getId, Customer::getCreaterId);
-        // 修复部门权限过滤逻辑
-        Object principal = SecurityContextHolder.getContext().getAuthentication().getPrincipal();
-        if (principal instanceof ManagerDetail) {
-            ManagerDetail userDetails = (ManagerDetail) principal;
-            // 假设 ManagerDetail 中有 deptIds 属性
-            // 如果是其他方式存储部门信息，请相应调整
-            Set<Integer> deptIds = userDetails.getDeptIds(); // 正确获取部门ID集合
-            if (deptIds != null && !deptIds.isEmpty()) {
-                log.info("用户部门IDs：{}", deptIds);
-                wrapper.in(SysManager::getDepartId, deptIds); // 使用正确的字段名
-            }
-        }
+                .leftJoin(SysManager.class,"o",SysManager::getId,Customer::getOwnerId)
+                .leftJoin(SysManager.class,"c",SysManager::getId,Customer::getCreaterId);
 
-        // 其他查询条件保持不变
-        if (StringUtils.isNotBlank(query.getName())) {
+        if (StringUtils.isNotBlank(query.getName())){
             wrapper.like(Customer::getName, query.getName());
         }
-        if (StringUtils.isNotBlank(query.getPhone())) {
+
+        if (StringUtils.isNotBlank(query.getPhone())){
             wrapper.like(Customer::getPhone, query.getPhone());
         }
-        if (query.getLevel() != null) {
+
+        if (query.getLevel()!=null){
             wrapper.eq(Customer::getLevel, query.getLevel());
         }
-        if (query.getSource() != null) {
+
+        if (query.getSource()!=null){
             wrapper.eq(Customer::getSource, query.getSource());
         }
-        if (query.getFollowStatus() != null) {
+
+        if (query.getFollowStatus()!=null){
             wrapper.eq(Customer::getFollowStatus, query.getFollowStatus());
         }
-        if (query.getIsPublic() != null) {
+
+        if (query.getIsPublic()!=null){
             wrapper.eq(Customer::getIsPublic, query.getIsPublic());
         }
+
         wrapper.orderByDesc(Customer::getCreateTime);
+
+        Page<CustomerVO> result = baseMapper.selectJoinPage(page, CustomerVO.class, wrapper);
+
         return wrapper;
     }
-
 }

@@ -8,7 +8,7 @@ import com.baomidou.mybatisplus.core.mapper.BaseMapper;
  *  Mapper 接口
  * </p>
  *
- * @author vact
+ * @author crm
  * @since 2025-10-12
  */
 public interface MenuMapper extends BaseMapper<Menu> {

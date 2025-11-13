@@ -8,7 +8,7 @@ import com.baomidou.mybatisplus.extension.service.IService;
  * 用户管理 服务类
  * </p>
  *
- * @author vact
+ * @author crm
  * @since 2025-10-12
  */
 public interface ManagerService extends IService<Manager> {

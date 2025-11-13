@@ -32,16 +32,16 @@ public class MybatisGen {
         outputFileStringMap.put(OutputFile.entity,path +  "entity");
         outputFileStringMap.put(OutputFile.mapper,path +  "mapper");
         outputFileStringMap.put(OutputFile.xml, pathXml);
-        FastAutoGenerator.create("jdbc:mysql://127.0.0.1:3306/db_crm", "root", "123456")
+        FastAutoGenerator.create("jdbc:mysql://127.0.0.1/dp_crm", "root", "123456")
                 .globalConfig(builder -> {
-                    builder.author("vact").enableSwagger(); // 设置作者// 开启 swagger 模式
+                    builder.author("crm").enableSwagger(); // 设置作者// 开启 swagger 模式
 
                 })
                 .packageConfig(builder -> {
                     builder.parent("com") // 设置父包名
                             .moduleName("crm") // 设置父包模块名
                             .pathInfo(outputFileStringMap);
-                    // 设置mapperXml生成路径
+                         // 设置mapperXml生成路径
                 })
                 .strategyConfig((scanner, builder) -> {
                     builder.addInclude(getTables(scanner.apply("请输入表名，多个英文逗号分隔？所有输入 all"))) // 设置需要生成的表名
@@ -76,3 +76,4 @@ public class MybatisGen {
     }
 
 }
+

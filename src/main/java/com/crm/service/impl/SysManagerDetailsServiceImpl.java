@@ -4,7 +4,6 @@ import com.crm.convert.SysManagerConvert;
 import com.crm.entity.SysManager;
 import com.crm.enums.AccountStatusEnum;
 import com.crm.security.user.ManagerDetail;
-import com.crm.service.DepartmentService;
 import com.crm.service.SysManagerDetailsService;
 import com.crm.service.SysMenuService;
 import lombok.AllArgsConstructor;
@@ -23,7 +22,6 @@ import java.util.Set;
 @AllArgsConstructor
 public class SysManagerDetailsServiceImpl implements SysManagerDetailsService {
     private final SysMenuService sysMenuService;
-    private final DepartmentService departmentService;
 
     @Override
     public UserDetails getManagerDetails(SysManager sysManager) {
@@ -34,11 +32,6 @@ public class SysManagerDetailsServiceImpl implements SysManagerDetailsService {
         if (sysManager.getStatus() == AccountStatusEnum.DISABLE.getValue()) {
             managerDetail.setEnabled(false);
         }
-        // 获取用户所属部门及子部门ID列表
-        if (sysManager.getDepartId() != null) {
-            Set<Integer> deptIds = departmentService.getDeptAndSubDeptIds(sysManager.getDepartId());
-            managerDetail.setDeptIds(deptIds);
-        }
 
         // 用户权限列表
         Set<String> authoritySet = sysMenuService.getManagerAuthority(managerDetail);
@@ -46,6 +39,5 @@ public class SysManagerDetailsServiceImpl implements SysManagerDetailsService {
 
         return managerDetail;
     }
-
 
 }

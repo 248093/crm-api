@@ -8,7 +8,7 @@ import com.baomidou.mybatisplus.core.mapper.BaseMapper;
  * 用户角色关系 Mapper 接口
  * </p>
  *
- * @author vact
+ * @author crm
  * @since 2025-10-12
  */
 public interface ManagerRoleMapper extends BaseMapper<ManagerRole> {

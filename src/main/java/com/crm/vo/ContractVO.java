@@ -70,10 +70,12 @@ public class ContractVO {
 
     @ApiModelProperty("合同开始时间")
     @NotNull(message = "合同开始时间不能为空")
+    @JsonFormat(pattern = DateUtils.DATE_PATTERN)
     private LocalDate startTime;
 
     @ApiModelProperty("合同结束时间")
     @NotNull(message = "合同结束时间不能为空")
+    @JsonFormat(pattern = DateUtils.DATE_PATTERN)
     private LocalDate endTime;
 
     List<ProductVO> products;

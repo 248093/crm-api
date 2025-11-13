@@ -1,22 +1,24 @@
 package com.crm.service.impl;
 
+
 import cn.hutool.core.lang.UUID;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.crm.common.exception.ServerException;
 import com.crm.common.result.PageResult;
-import com.crm.entity.Contract;
-import com.crm.entity.ContractProduct;
-import com.crm.entity.Customer;
-import com.crm.entity.Product;
+import com.crm.convert.ContractConvert;
+import com.crm.entity.*;
 import com.crm.mapper.ContractMapper;
-import com.crm.mapper.ContractProductMapper; // 新增导入
+import com.crm.mapper.ContractProductMapper;
 import com.crm.mapper.ProductMapper;
 import com.crm.query.ContractQuery;
+import com.crm.query.CustomerQuery;
+import com.crm.query.CustomerTrendQuery;
 import com.crm.security.user.SecurityUser;
 import com.crm.service.ContractService;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
-import com.crm.vo.ContractVO;
-import com.crm.vo.ProductVO;
+import com.crm.utils.DateUtils;
+import com.crm.vo.*;
 import com.github.yulichang.wrapper.MPJLambdaWrapper;
 import io.micrometer.common.util.StringUtils;
 import lombok.AllArgsConstructor;
@@ -25,17 +27,25 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.time.temporal.ChronoUnit;
 import java.util.*;
+import java.util.Map;
+import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
+
+import static com.crm.utils.DateUtils.*;
+import static com.crm.utils.NumberUtils.generateContractNumber;
 
 /**
  * <p>
  *  服务实现类
  * </p>
  *
- * @author vact
+ * @author crm
  * @since 2025-10-12
  */
 @Service
@@ -93,11 +103,20 @@ public class ContractServiceImpl extends ServiceImpl<ContractMapper, Contract> i
         contract.setAmount(contractVO.getAmount());
         contract.setReceivedAmount(contractVO.getReceivedAmount() != null ? contractVO.getReceivedAmount() : BigDecimal.ZERO);
         contract.setStatus(contractVO.getStatus()==null?0:contractVO.getStatus());
-        contract.setStartTime(contractVO.getStartTime().atStartOfDay());
-        contract.setEndTime(contractVO.getEndTime().atStartOfDay());
-        contract.setSignTime(contractVO.getSignTime().atStartOfDay());
+        contract.setStartTime(LocalDate.from(contractVO.getStartTime().atStartOfDay()));
+        contract.setEndTime(LocalDate.from(contractVO.getEndTime().atStartOfDay()));
+        contract.setSignTime(LocalDate.from(contractVO.getSignTime().atStartOfDay()));
         contract.setCustomerId(contractVO.getCustomerId());
-        contract.setRemark(contractVO.getRemark());
+        String remarkStr = contractVO.getRemark();
+        if (StringUtils.isNotBlank(remarkStr)) {
+            try {
+                contract.setRemark(Integer.valueOf(remarkStr));
+            } catch (NumberFormatException e) {
+                throw new ServerException("备注必须输入数字类型");
+            }
+        } else {
+            contract.setRemark(null);
+        }
 
         // 如果是新增合同，设置创建者信息和编号
         if (contractId == null) {
@@ -221,6 +240,65 @@ public class ContractServiceImpl extends ServiceImpl<ContractMapper, Contract> i
         cp.setPrice(product.getPrice());
         cp.setTotalPrice(product.getPrice().multiply(BigDecimal.valueOf(count)));
         return cp;
+    }
+    @Override
+    public Map<String, List> getContractTrendData(CustomerTrendQuery query) {
+        List<String> timeList = new ArrayList<>();
+        List<Integer> countList = new ArrayList<>();
+        List<BigDecimal> amountList = new ArrayList<>(); // 新增：用于存储金额数据
+
+        List<ContractTrendVO> tradeStatistics;
+
+        if ("day".equals(query.getTransactionType())){
+            LocalDateTime now = LocalDateTime.now();
+            LocalDateTime localDateTime = now.truncatedTo(ChronoUnit.SECONDS);
+            LocalDateTime startTime = now.withHour(0).withSecond(0).truncatedTo(ChronoUnit.SECONDS);
+            DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+            List<String> timeRange = new ArrayList<>();
+            timeRange.add(formatter.format(startTime));
+            timeRange.add(formatter.format(localDateTime));
+            timeList = getHourData(timeList);
+            query.setTimeRange(timeRange);
+            tradeStatistics = baseMapper.getTradeStatistics(query);
+        } else if ("mothrange".equals(query.getTransactionType())) {
+            query.setTimeFormat("%Y-%m");
+            timeList = getMonthInRange(query.getTimeRange().get(0), query.getTimeRange().get(1));
+            tradeStatistics = baseMapper.getTradeStatisticsByDay(query);
+        } else if ("week".equals(query.getTransactionType())) {
+            timeList = getWeekInRange(query.getTimeRange().get(0), query.getTimeRange().get(1));
+            tradeStatistics = baseMapper.getTradeStatisticsByWeek(query);
+        }else {
+            query.setTimeFormat("%Y-%m-%d");
+            timeList = DateUtils.getDatesInRange(query.getTimeRange().get(0), query.getTimeRange().get(1));
+            tradeStatistics = baseMapper.getTradeStatisticsByDay(query);
+        }
+
+        List<ContractTrendVO> finalTradeStatistics = tradeStatistics;
+        timeList.forEach(item -> {
+            ContractTrendVO statisticsVO = finalTradeStatistics.stream().filter(vo -> {
+                        if ("day".equals(query.getTransactionType())){
+                            return item.substring(0,2).equals(vo.getTradeTime().substring(0,2));
+                        }else {
+                            return item.equals(vo.getTradeTime());
+                        }
+                    })
+                    .findFirst()
+                    .orElse(null);
+
+            if (statisticsVO != null){
+                countList.add(statisticsVO.getTradeCount());
+                amountList.add(statisticsVO.getTradeAmount() != null ? BigDecimal.valueOf(statisticsVO.getTradeAmount()) : BigDecimal.ZERO); // 添加金额数据
+            }else {
+                countList.add(0);
+                amountList.add(BigDecimal.ZERO); // 添加默认金额数据
+            }
+        });
+
+        Map<String, List> result = new HashMap<>();
+        result.put("timeList", timeList);
+        result.put("countList", countList);
+        result.put("amountList", amountList); // 新增：返回金额列表
+        return result;
     }
 
 }

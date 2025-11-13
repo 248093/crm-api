@@ -2,15 +2,17 @@ package com.crm.common.config;
 
 import lombok.Data;
 import org.springframework.boot.context.properties.ConfigurationProperties;
-import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.PropertySource;
+import org.springframework.stereotype.Component;
 
-@Data
+@Component
 @ConfigurationProperties(prefix = "aliyun-oss")
-@Configuration
-public class OssConfig {
+@PropertySource("classpath:aliyun-oss.properties")
+@Data
+public class AliyunOssProperties {
     private String endpoint;
     private String accessKeyId;
     private String accessKeySecret;
     private String bucketName;
-    private String dir;
+    private String dir; // 如果需要的话
 }

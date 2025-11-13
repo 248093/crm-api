@@ -7,21 +7,21 @@ import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableLogic;
 import com.baomidou.mybatisplus.annotation.TableName;
 import java.time.LocalDateTime;
-import java.util.List;
 import java.util.ArrayList;
-
+import java.util.List;
 
 import com.crm.utils.DateUtils;
 import com.fasterxml.jackson.annotation.JsonFormat;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import io.swagger.annotations.ApiModel;
 import io.swagger.annotations.ApiModelProperty;
+import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Getter;
 import lombok.Setter;
 
 /**
  * <p>
- *
+ * 
  * </p>
  *
  * @author crm
@@ -59,7 +59,6 @@ public class Department {
     @JsonIgnore
     private Integer deleteFlag;
 
-
     @ApiModelProperty("创建时间")
     @TableField(value = "create_time", fill = FieldFill.INSERT)
     @JsonFormat(pattern = DateUtils.DATE_TIME_PATTERN)
@@ -70,6 +69,7 @@ public class Department {
     @JsonFormat(pattern = DateUtils.DATE_TIME_PATTERN)
     private LocalDateTime updateTime;
 
+    @Schema(description = "子部门")
     @TableField(exist = false)
     private List<Department> children = new ArrayList<>();
 }
